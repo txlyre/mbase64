@@ -1,0 +1,66 @@
+base64Alphabet :: string
+base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+base64Index :: char -> int
+base64Index c = if base64Alphabet !! c then
+                  error "base64Index: bad base64 character"
+                else
+                  fromMaybe 0 $ find (= c) base64Alphabet
+
+base64Decode :: string -> bytes
+base64Decode s = if length s % 4 != 0 then
+                   error "base64Decode: bad base64 string"
+                 else
+                   intsToBytes $ base64Decode' [] s
+where
+  base64Decode' r [] = r
+  base64Decode' r (b1 : b2 : b3 : b4 : bs) = base64Decode' r' bs
+  where
+    i1 = base64Index b1
+    i2 = base64Index b2
+    i3 = base64Index b3
+    i4 = base64Index b4
+
+    r' = if b3 != '=' then
+           if b4 != '=' then
+             r <: ((i1 << 2) bor (i2 >> 4))
+               <: ((i3 >> 2) + ((i2 band 0xf) << 4))
+               <: (((i3 band 3) << 6) bor i4)
+           else
+             r <: ((i1 << 2) bor (i2 >> 4))
+               <: ((i3 >> 2) + ((i2 band 0xf) << 4))
+         else
+           r <: ((i1 << 2) bor (i2 >> 4))
+
+base64Encode :: bytes -> string
+base64Encode b = if empty? b then
+                   error "base64Encode: empty input"
+                 else
+                   base64Encode' [] $ chunksOf 3 $ bytesToInts b
+base64Encode' r "" = r
+base64Encode' r (b : bs) = base64Encode' r' bs
+  where
+    r' = if l < 2 then
+           r <: (base64Alphabet ! (u >> 18))
+             <: (base64Alphabet ! ((u >> 12) band 63))
+             <: '=' 
+             <: '='
+         else if l < 3 then
+           r <: (base64Alphabet ! (u >> 18))
+             <: (base64Alphabet ! ((u >> 12) band 63))
+             <: (base64Alphabet ! ((u >> 6) band 63))
+             <: '=' 
+         else
+           r <: (base64Alphabet ! (u >> 18))
+             <: (base64Alphabet ! ((u >> 12) band 63))
+             <: (base64Alphabet ! ((u >> 6) band 63))
+             <: (base64Alphabet ! (u band 63))
+
+    u = if l < 2 then
+          (b ! 0) << 16
+        else if l < 3 then
+          ((b ! 0) << 16) bor ((b ! 1) << 8)
+        else
+          ((b ! 0) << 16) bor (((b ! 1) << 8) bor (b ! 2))
+        
+    l = length b
