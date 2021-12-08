@@ -1,0 +1,7 @@
+{
+  "name": "mbase64",
+  "author": "txlyre",
+  "description": "Dumb Base64 encoder/decoder.",
+  "version": "0.1",
+  "dependencies": []
+}
